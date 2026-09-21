@@ -576,7 +576,9 @@ function rowHTML(item, i) {
   else if (item.status === 'notfound') pill = '<span class="status-pill pill-err">Олдсонгүй</span>' +
     (item.err ? '<div style="font-size:0.7rem;color:var(--red);margin-top:4px;max-width:340px;word-break:break-word;">' +
       String(item.err).replace(/</g,'&lt;') + '</div>' : '');
-  else if (item.status === 'err')      pill = `<span class="status-pill pill-err" title="${(item.err||'').replace(/"/g,"'")}">Алдаа ⓘ</span>`;
+  else if (item.status === 'err')      pill = '<span class="status-pill pill-err">Алдаа</span>' +
+    '<div style="font-size:0.7rem;color:var(--red);margin-top:4px;max-width:340px;word-break:break-word;">' +
+    String(item.err || '').replace(/</g,'&lt;') + '</div>';
 
   const tinCell = item.tin
     ? `<span class="td-tin">${item.tin}</span>`
