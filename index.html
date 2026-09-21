@@ -305,9 +305,16 @@ tr:hover td{background:#F9FAFD;}
 
   <!-- Input card -->
   <div class="card">
-    <div class="section-label">Регистрийн дугаар оруулах</div>
-    <textarea class="rd-textarea" id="rdInput"
-      placeholder="ИЦ92012511&#10;УБ88113344&#10;..."></textarea>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div class="section-label" style="margin-bottom:0;">Регистрийн дугаар оруулах</div>
+      <div id="urlStatus" style="font-size:0.75rem;cursor:pointer;" onclick="showUrlSetup(true)">
+        <span style="color:var(--text3)">⚙ Apps Script тохируулах</span>
+      </div>
+    </div>
+    <div id="dropZone" style="position:relative;">
+      <textarea class="rd-textarea" id="rdInput"
+        placeholder="ИЦ92012511&#10;УБ88113344&#10;...&#10;&#10;Excel файл чирж оруулах боломжтой"></textarea>
+    </div>
     <div class="input-hint">Мөр бүрт нэг РД оруулна. Хоосон мөр, давхардал автоматаар шүүгдэнэ.</div>
 
     <div class="actions">
@@ -392,74 +399,48 @@ tr:hover td{background:#F9FAFD;}
 </div>
 
 <script>
+// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
+// ТОХИРГОО — Deploy хийсний дараа URL болон TOKEN оруулна
+// ══════════════════════════════════════════════════
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzS4wNkd2z9sqYrV82J-HailZ1iCnLznh8VPKcxVVvsXGTQftQ0-6kLXSPvLOVCt8R5Iw/exec';   // ← Apps Script Web App URL
+const SCRIPT_TOKEN    = '2a6a277c-9a8c-4bd6-82d0-ada2c98e0691';         // ← showToken()-оос гарсан утга
+
 // ── STATE ──
-let results = [];
+let results   = [];
 let isRunning = false;
 
-// ── API FETCH ──
-const API_BASE = 'https://api.ebarimt.mn/api/info/check/getTinInfo?regNo=';
-let workingVariant = null;
+// ── STARTUP: URL тохиргоо харуулах ──
+window.addEventListener('DOMContentLoaded', () => {
+  updateUrlStatus(true);
 
-// РД encode хийхгүй болон encode хийсэн хоёр variant, proxy-тэй хамт туршина
-function getVariants(rd) {
-  const u1 = API_BASE + rd;
-  const u2 = API_BASE + encodeURIComponent(rd);
-  return [
-    u1,                                                                        // 0: шууд
-    u2,                                                                        // 1: encode
-    'https://corsproxy.io/?' + encodeURIComponent(u1),                        // 2: corsproxy
-    'https://corsproxy.io/?' + encodeURIComponent(u2),                        // 3: corsproxy+enc
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent(u1),           // 4: allorigins
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent(u2),           // 5: allorigins+enc
-    'https://thingproxy.freeboard.io/fetch/' + u1,                            // 6: thingproxy
-    'https://thingproxy.freeboard.io/fetch/' + u2,                            // 7: thingproxy+enc
-    'https://yacdn.org/proxy/' + u1,                                           // 8: yacdn
-  ];
-}
-
-async function fetchTin(rd) {
-  if (workingVariant !== null) {
-    // Ажилласан variant-ын загвараар URL үүсгэнэ
-    const sample = getVariants('SAMPLE_RD')[workingVariant];
-    const url = sample.includes(encodeURIComponent('SAMPLE_RD'))
-      ? sample.replace(encodeURIComponent('SAMPLE_RD'), encodeURIComponent(rd))
-      : sample.replace('SAMPLE_RD', rd);
-    return doFetch(url);
+  const zone = document.getElementById('dropZone');
+  if (zone) {
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.classList.remove('drag-over');
+      const f = e.dataTransfer.files[0];
+      if (f) importFromFile(f);
+    });
   }
-  const variants = getVariants(rd);
-  for (let i = 0; i < variants.length; i++) {
-    try {
-      const data = await doFetch(variants[i]);
-      workingVariant = i;
-      console.log('✓ Variant', i, 'ажиллав:', variants[i].slice(0,70));
-      return data;
-    } catch(e) {
-      console.warn('✗ Variant', i, ':', e.message);
-    }
-  }
-  throw new Error('CORS блок: ebarimt.mn энэ хаягаас хандахыг зөвшөөрөхгүй байна. GitHub Pages-д байршуулсны дараа дахин туршина уу.');
-}
+});
 
-async function doFetch(url) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 12000);
-  try {
-    const res = await fetch(url, { signal: ctrl.signal, headers: { 'Accept': 'application/json' } });
-    clearTimeout(timer);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const text = await res.text();
-    let json;
-    try { json = JSON.parse(text); } catch { throw new Error('JSON биш: ' + text.slice(0,60)); }
-    if (json && typeof json.contents === 'string') {
-      try { json = JSON.parse(json.contents); } catch { throw new Error('contents JSON биш'); }
-    }
-    return json;
-  } catch(e) {
-    clearTimeout(timer);
-    if (e.name === 'AbortError') throw new Error('Timeout (12с)');
-    throw e;
+function showUrlSetup() {}
+
+function updateUrlStatus(saved) {
+  const el = document.getElementById('urlStatus');
+  if (APPS_SCRIPT_URL) {
+    el.innerHTML = '<span style="color:var(--green)">✓ Apps Script холбогдсон</span>';
+    showUrlStatus('Apps Script URL тохируулагдлаа', 'ok');
+  } else {
+    el.innerHTML = '<span style="color:var(--red)">✕ URL тохируулагдаагүй</span>';
   }
 }
+
+function saveScriptUrl() {}
+
+function showUrlStatus() {}
 
 // ── PARSE INPUT ──
 function parseRDs() {
@@ -467,13 +448,14 @@ function parseRDs() {
   const lines = raw.split(/[\n,;]+/)
     .map(l => l.trim().toUpperCase())
     .filter(l => l.length > 0);
-  // Давхардлыг арилгах
   return [...new Set(lines)];
 }
 
 // ── MAIN SEARCH ──
 async function startSearch() {
   if (isRunning) return;
+  // URL хатуу тохируулагдсан
+
   const rds = parseRDs();
   if (!rds.length) {
     showStatus('Регистрийн дугаар оруулна уу', 'err');
@@ -481,60 +463,58 @@ async function startSearch() {
   }
 
   isRunning = true;
-  workingMode = null; // горимыг дахин шалгана
   results = rds.map(rd => ({ rd, name: '', tin: '', status: 'pending' }));
 
   const searchBtn = document.getElementById('searchBtn');
   searchBtn.disabled = true;
   searchBtn.innerHTML = '<span class="spinner"></span> Хайж байна...';
-
   document.getElementById('exportBtn').disabled = true;
   document.getElementById('resultsCard').style.display = 'block';
   document.getElementById('progressBar').style.display = 'block';
-
+  document.getElementById('progressFill').style.width = '0%';
   renderTable();
   showStatus(rds.length + ' РД хайж байна...', 'info');
 
+  // Batch-аар илгээнэ — 20 РД нэг дор
+  const BATCH = 20;
   let done = 0;
-  // Concurrency: 3 зэрэг хайна
-  const CONCURRENCY = 3;
-  const queue = [...results];
-  let idx = 0;
 
-  async function worker() {
-    while (idx < queue.length) {
-      const item = queue[idx++];
-      item.status = 'loading';
-      renderRow(item, results.indexOf(item));
-      try {
-        const data = await fetchTin(item.rd);
-        // Response: { name, tin } or array/record
-        let name = '', tin = '';
-        if (Array.isArray(data)) {
-          // Record.ToTable format: [{Name:'name',Value:...},{Name:'tin',Value:...}]
-          data.forEach(r => {
-            if (r.Name === 'name' || r.name === 'name') name = r.Value || r.value || '';
-            if (r.Name === 'tin'  || r.name === 'tin')  tin  = r.Value || r.value || '';
-          });
-        } else if (typeof data === 'object') {
-          name = data.name || data.NAME || '';
-          tin  = data.tin  || data.TIN  || data.tinNumber || '';
-        }
-        item.name   = name || '—';
-        item.tin    = tin  || '';
-        item.status = tin ? 'ok' : 'notfound';
-      } catch(e) {
-        item.status = 'err';
-        item.err = e.message;
+  for (let i = 0; i < rds.length; i += BATCH) {
+    const batch = rds.slice(i, i + BATCH);
+    // Loading state
+    batch.forEach(rd => {
+      const item = results.find(r => r.rd === rd);
+      if (item) { item.status = 'loading'; renderRow(item, results.indexOf(item)); }
+    });
+
+    try {
+      const url = APPS_SCRIPT_URL + '?token=' + encodeURIComponent(SCRIPT_TOKEN) + '&rds=' + batch.map(encodeURIComponent).join(',');
+      const res  = await fetch(url);
+      const json = await res.json();
+
+      if (json.results) {
+        json.results.forEach(r => {
+          const item = results.find(x => x.rd === r.rd.toUpperCase() || x.rd === r.rd);
+          if (!item) return;
+          item.name   = r.name || '';
+          item.tin    = r.tin  || '';
+          item.status = r.status === 'ok' ? 'ok' : 'notfound';
+          if (r.error) item.err = r.error;
+          done++;
+          renderRow(item, results.indexOf(item));
+        });
       }
-      done++;
-      updateProgress(done, results.length);
-      renderRow(item, results.indexOf(item));
-      updateSummary();
+    } catch(err) {
+      batch.forEach(rd => {
+        const item = results.find(r => r.rd === rd);
+        if (item) { item.status = 'err'; item.err = err.message; renderRow(item, results.indexOf(item)); }
+      });
+      done += batch.length;
     }
-  }
 
-  await Promise.all(Array.from({length: CONCURRENCY}, worker));
+    updateProgress(done, rds.length);
+    updateSummary();
+  }
 
   isRunning = false;
   searchBtn.disabled = false;
@@ -543,14 +523,11 @@ async function startSearch() {
     <path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
   </svg> Хайх`;
 
-  const okCount = results.filter(r => r.status === 'ok').length;
-  const errCount = results.filter(r => r.status === 'err' || r.status === 'notfound').length;
+  const okCount  = results.filter(r => r.status === 'ok').length;
+  const errCount = results.filter(r => r.status !== 'ok').length;
   showStatus(`✓ ${okCount} ТИН олдлоо${errCount ? ' · ' + errCount + ' олдсонгүй' : ''}`, okCount ? 'ok' : 'err');
   document.getElementById('exportBtn').disabled = false;
-
-  setTimeout(() => {
-    document.getElementById('progressBar').style.display = 'none';
-  }, 600);
+  setTimeout(() => document.getElementById('progressBar').style.display = 'none', 800);
 }
 
 function updateProgress(done, total) {
@@ -563,10 +540,10 @@ function updateSummary() {
   const ok  = results.filter(r => r.status === 'ok').length;
   const err = results.filter(r => r.status === 'err' || r.status === 'notfound').length;
   const ld  = results.filter(r => r.status === 'loading' || r.status === 'pending').length;
-  let parts = [];
+  const parts = [];
   if (ok)  parts.push(`<span style="color:var(--green)">${ok} олдлоо</span>`);
   if (err) parts.push(`<span style="color:var(--red)">${err} олдсонгүй</span>`);
-  if (ld)  parts.push(`<span style="color:var(--text3)">${ld} хүлээгдэж байна</span>`);
+  if (ld)  parts.push(`<span style="color:var(--text3)">${ld} үлдсэн</span>`);
   document.getElementById('summaryText').innerHTML = parts.join(' · ');
 }
 
@@ -574,39 +551,28 @@ function updateSummary() {
 function renderTable() {
   const tbody = document.getElementById('resultsBody');
   tbody.innerHTML = '';
-  results.forEach((item, i) => {
-    tbody.insertAdjacentHTML('beforeend', rowHTML(item, i));
-  });
+  results.forEach((item, i) => tbody.insertAdjacentHTML('beforeend', rowHTML(item, i)));
   document.getElementById('countBadge').textContent = results.length;
 }
 
 function renderRow(item, i) {
   const existing = document.getElementById('row-' + i);
   const html = rowHTML(item, i);
-  if (existing) {
-    existing.outerHTML = html;
-  } else {
-    document.getElementById('resultsBody').insertAdjacentHTML('beforeend', html);
-  }
+  if (existing) existing.outerHTML = html;
+  else document.getElementById('resultsBody').insertAdjacentHTML('beforeend', html);
 }
 
 function rowHTML(item, i) {
   let pill = '';
-  if (item.status === 'pending') {
-    pill = '<span class="status-pill pill-pending">Хүлээгдэж байна</span>';
-  } else if (item.status === 'loading') {
-    pill = '<span class="status-pill pill-wait"><span class="spinner"></span> Хайж байна</span>';
-  } else if (item.status === 'ok') {
-    pill = '<span class="status-pill pill-ok">✓ Олдлоо</span>';
-  } else if (item.status === 'notfound') {
-    pill = '<span class="status-pill pill-err">Олдсонгүй</span>';
-  } else if (item.status === 'err') {
-    pill = '<span class="status-pill pill-err" title="' + (item.err||'').replace(/"/g,"'") + '">Алдаа ⓘ</span>';
-  }
+  if      (item.status === 'pending')  pill = '<span class="status-pill pill-pending">Хүлээгдэж байна</span>';
+  else if (item.status === 'loading')  pill = '<span class="status-pill pill-wait"><span class="spinner"></span> Хайж байна</span>';
+  else if (item.status === 'ok')       pill = '<span class="status-pill pill-ok">✓ Олдлоо</span>';
+  else if (item.status === 'notfound') pill = '<span class="status-pill pill-err">Олдсонгүй</span>';
+  else if (item.status === 'err')      pill = `<span class="status-pill pill-err" title="${(item.err||'').replace(/"/g,"'")}">Алдаа ⓘ</span>`;
 
   const tinCell = item.tin
     ? `<span class="td-tin">${item.tin}</span>`
-    : `<span class="td-tin empty">${item.status === 'ok' ? '—' : ''}</span>`;
+    : `<span class="td-tin empty"></span>`;
 
   return `<tr id="row-${i}">
     <td style="color:var(--text3);font-size:0.78rem;">${i+1}</td>
@@ -635,44 +601,36 @@ function clearAll() {
   document.getElementById('progressBar').style.display = 'none';
   document.getElementById('progressFill').style.width = '0%';
   document.getElementById('exportBtn').disabled = true;
-  workingMode = null;
 }
 
 // ── EXCEL IMPORT ──
 function importExcel(input) {
   const f = input.files[0];
-  if (!f) return;
+  if (f) importFromFile(f);
+  input.value = '';
+}
+
+function importFromFile(f) {
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      const wb = XLSX.read(e.target.result, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
+      const wb   = XLSX.read(e.target.result, { type: 'array' });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-      const rds = [];
-      data.forEach(row => {
-        row.forEach(cell => {
-          const v = String(cell).trim().toUpperCase();
-          // РД format: 2 үсэг + тоо эсвэл бүгд тоо
-          if (v && ((/^[А-ЯӨҮA-Z]{2}\d+$/.test(v)) || /^\d{8,10}$/.test(v))) {
-            rds.push(v);
-          }
-        });
-      });
-      if (!rds.length) {
-        showStatus('Excel-ээс РД олдсонгүй', 'err');
-        return;
-      }
-      const unique = [...new Set(rds)];
-      // Одоо байгаа текстэд нэмэх
-      const cur = document.getElementById('rdInput').value.trim();
-      const existing = cur ? cur.split('\n').map(s=>s.trim().toUpperCase()).filter(Boolean) : [];
-      const merged = [...new Set([...existing, ...unique])];
+      const rds  = [];
+      data.forEach(row => row.forEach(cell => {
+        const v = String(cell).trim().toUpperCase();
+        if (v && (/^[А-ЯӨҮA-Z]{2}\d+$/.test(v) || /^\d{8,10}$/.test(v))) rds.push(v);
+      }));
+      if (!rds.length) { showStatus('Excel-ээс РД олдсонгүй', 'err'); return; }
+      const cur    = document.getElementById('rdInput').value.trim();
+      const exist  = cur ? cur.split('\n').map(s => s.trim().toUpperCase()).filter(Boolean) : [];
+      const merged = [...new Set([...exist, ...rds])];
       document.getElementById('rdInput').value = merged.join('\n');
-      showStatus(`✓ ${unique.length} РД Excel-ээс уншигдлаа`, 'ok');
+      showStatus(`✓ ${rds.length} РД Excel-ээс уншигдлаа`, 'ok');
     } catch(err) {
       showStatus('Excel уншихад алдаа: ' + err.message, 'err');
     }
-    input.value = '';
   };
   reader.readAsArrayBuffer(f);
 }
@@ -684,19 +642,19 @@ function exportExcel() {
     'РД':         r.rd,
     'НЭР':        r.name || '',
     'ТИН ДУГААР': r.tin  || '',
-    'ТӨЛӨВ':      r.status === 'ok' ? 'Олдлоо' : r.status === 'notfound' ? 'Олдсонгүй' : 'Алдаа',
+    'ТӨЛӨВ':      r.status === 'ok' ? 'Олдлоо' : 'Олдсонгүй',
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
   ws['!cols'] = [{wch:14},{wch:36},{wch:18},{wch:12}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'ТИН Лавлагаа');
-  const date = new Date().toISOString().slice(0,10);
-  XLSX.writeFile(wb, `TIN_Lavlagaa_${date}.xlsx`);
+  XLSX.writeFile(wb, `TIN_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
-// ── ENTER shortcut ──
-document.getElementById('rdInput').addEventListener('keydown', e => {
+// Ctrl+Enter хайх
+document.addEventListener('keydown', e => {
   if (e.ctrlKey && e.key === 'Enter') startSearch();
+});
 });
 </script>
 </body>
