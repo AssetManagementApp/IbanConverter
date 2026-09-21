@@ -492,6 +492,8 @@ async function startSearch() {
       const res  = await fetch(url);
       const json = await res.json();
 
+      if (!json.results) throw new Error(json.error || 'Apps Script буруу хариу өглөө');
+
       if (json.results) {
         json.results.forEach(r => {
           const item = results.find(x => x.rd === r.rd.toUpperCase() || x.rd === r.rd);
@@ -654,7 +656,6 @@ function exportExcel() {
 // Ctrl+Enter хайх
 document.addEventListener('keydown', e => {
   if (e.ctrlKey && e.key === 'Enter') startSearch();
-});
 });
 </script>
 </body>
