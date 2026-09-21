@@ -403,8 +403,6 @@ tr:hover td{background:#F9FAFD;}
 // ══════════════════════════════════════════════════
 // ТОХИРГОО — Deploy хийсний дараа URL болон TOKEN оруулна
 // ══════════════════════════════════════════════════
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxPL5wK1GdyiOIaI4JHFCbeguFG88llwaJRSnsex6gbiWoCXsL0JPF25gyLOO3FITdwzw/exec';   // ← Apps Script Web App URL
-const SCRIPT_TOKEN    = '2a6a277c-9a8c-4bd6-82d0-ada2c98e0691';         // ← showToken()-оос гарсан утга
 
 // ── STATE ──
 let results   = [];
@@ -428,14 +426,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
 function showUrlSetup() {}
 
-function updateUrlStatus(saved) {
-  const el = document.getElementById('urlStatus');
-  if (APPS_SCRIPT_URL) {
-    el.innerHTML = '<span style="color:var(--green)">✓ Apps Script холбогдсон</span>';
-    showUrlStatus('Apps Script URL тохируулагдлаа', 'ok');
-  } else {
-    el.innerHTML = '<span style="color:var(--red)">✕ URL тохируулагдаагүй</span>';
-  }
+function updateUrlStatus() {
+  document.getElementById('urlStatus').innerHTML =
+    '<span style="color:var(--green)">✓ ebarimt API холбогдсон</span>';
 }
 
 function saveScriptUrl() {}
@@ -475,48 +468,59 @@ async function startSearch() {
   renderTable();
   showStatus(rds.length + ' РД хайж байна...', 'info');
 
-  // Batch-аар илгээнэ — 20 РД нэг дор
-  const BATCH = 20;
-  let done = 0;
+  // ebarimt API-г браузерээс шууд дуудна (5 зэрэг)
+  const EBARIMT     = 'https://api.ebarimt.mn/api/info/check/';
+  const CONCURRENCY = 5;
+  let done = 0, next = 0;
 
-  for (let i = 0; i < rds.length; i += BATCH) {
-    const batch = rds.slice(i, i + BATCH);
-    // Loading state
-    batch.forEach(rd => {
-      const item = results.find(r => r.rd === rd);
-      if (item) { item.status = 'loading'; renderRow(item, results.indexOf(item)); }
-    });
-
+  async function fetchJson(url) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 15000);
     try {
-      const url = APPS_SCRIPT_URL + '?token=' + encodeURIComponent(SCRIPT_TOKEN) + '&rds=' + batch.map(encodeURIComponent).join(',');
-      const res  = await fetch(url);
-      const json = await res.json();
+      const res = await fetch(url, { signal: ctrl.signal });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('Хариу ирсэнгүй (15 сек)');
+      if (e instanceof TypeError)  throw new Error('API-д хандаж чадсангүй (CORS эсвэл сүлжээ)');
+      throw e;
+    } finally { clearTimeout(t); }
+  }
 
-      if (!json.results) throw new Error(json.error || 'Apps Script буруу хариу өглөө');
-
-      if (json.results) {
-        json.results.forEach(r => {
-          const item = results.find(x => x.rd === r.rd.toUpperCase() || x.rd === r.rd);
-          if (!item) return;
-          item.name   = r.name || '';
-          item.tin    = r.tin  || '';
-          item.status = r.status === 'ok' ? 'ok' : 'notfound';
-          if (r.error) item.err = r.error;
-          done++;
-          renderRow(item, results.indexOf(item));
-        });
+  async function lookup(item) {
+    const idx = results.indexOf(item);
+    item.status = 'loading'; renderRow(item, idx);
+    try {
+      const r1  = await fetchJson(EBARIMT + 'getTinInfo?regNo=' + encodeURIComponent(item.rd));
+      const raw = r1 ? r1.data : null;
+      const tin = (raw !== null && raw !== undefined && raw !== '' && typeof raw !== 'object') ? String(raw) : '';
+      if (!tin) {
+        item.status = 'notfound';
+        item.err = (r1 && r1.msg) ? String(r1.msg) : '';
+      } else {
+        item.tin = tin; item.status = 'ok';
+        try {
+          const r2 = await fetchJson(EBARIMT + 'getInfo?tin=' + encodeURIComponent(tin));
+          const d  = r2 && r2.data;
+          item.name = (d && typeof d === 'object') ? (d.name || d.NAME || d.orgName || '') : '';
+        } catch (e2) { /* нэр олдохгүй ч ТИН харагдана */ }
       }
-    } catch(err) {
-      batch.forEach(rd => {
-        const item = results.find(r => r.rd === rd);
-        if (item) { item.status = 'err'; item.err = err.message; renderRow(item, results.indexOf(item)); }
-      });
-      done += batch.length;
+    } catch (err) {
+      item.status = 'err'; item.err = err.message;
     }
-
+    done++;
+    renderRow(item, idx);
     updateProgress(done, rds.length);
     updateSummary();
   }
+
+  async function worker() {
+    while (next < results.length) {
+      const item = results[next++];
+      await lookup(item);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, results.length) }, worker));
 
   isRunning = false;
   searchBtn.disabled = false;
