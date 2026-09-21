@@ -405,12 +405,15 @@ function getVariants(rd) {
   const u1 = API_BASE + rd;
   const u2 = API_BASE + encodeURIComponent(rd);
   return [
-    u1,
-    u2,
-    'https://corsproxy.io/?' + encodeURIComponent(u1),
-    'https://corsproxy.io/?' + encodeURIComponent(u2),
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent(u1),
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent(u2),
+    u1,                                                                        // 0: шууд
+    u2,                                                                        // 1: encode
+    'https://corsproxy.io/?' + encodeURIComponent(u1),                        // 2: corsproxy
+    'https://corsproxy.io/?' + encodeURIComponent(u2),                        // 3: corsproxy+enc
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(u1),           // 4: allorigins
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(u2),           // 5: allorigins+enc
+    'https://thingproxy.freeboard.io/fetch/' + u1,                            // 6: thingproxy
+    'https://thingproxy.freeboard.io/fetch/' + u2,                            // 7: thingproxy+enc
+    'https://yacdn.org/proxy/' + u1,                                           // 8: yacdn
   ];
 }
 
@@ -434,7 +437,7 @@ async function fetchTin(rd) {
       console.warn('✗ Variant', i, ':', e.message);
     }
   }
-  throw new Error('API-д холбогдохгүй байна. F12 Console-ээс дэлгэрэнгүй үзнэ үү.');
+  throw new Error('CORS блок: ebarimt.mn энэ хаягаас хандахыг зөвшөөрөхгүй байна. GitHub Pages-д байршуулсны дараа дахин туршина уу.');
 }
 
 async function doFetch(url) {
