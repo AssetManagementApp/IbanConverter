@@ -1,1 +1,700 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ТИН Лавлагаа</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
+:root{
+  --bg:       #F7F8FC;
+  --surface:  #FFFFFF;
+  --border:   #E2E6F0;
+  --border2:  #C8D0E0;
+  --blue:     #1B4FD8;
+  --blue-lt:  #EEF2FF;
+  --blue-dk:  #1340B0;
+  --green:    #12A150;
+  --green-lt: #EDFAF3;
+  --red:      #D63B3B;
+  --red-lt:   #FFF0F0;
+  --orange:   #E07B20;
+  --orange-lt:#FFF6ED;
+  --text:     #141820;
+  --text2:    #5A6478;
+  --text3:    #9AA3B5;
+  --r:        8px;
+  --r2:       12px;
+  --sh:       0 2px 12px rgba(0,0,0,.07);
+  --sh2:      0 4px 24px rgba(0,0,0,.11);
+}
+
+body{
+  font-family:'Inter',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  padding:0;
+}
+
+/* ── HEADER ── */
+.header{
+  background:var(--blue);
+  padding:18px 32px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  box-shadow:0 2px 8px rgba(27,79,216,.25);
+}
+.header-logo{
+  width:38px;height:38px;
+  background:rgba(255,255,255,.15);
+  border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.header-logo svg{color:#fff;}
+.header-title{
+  font-size:1.05rem;font-weight:700;color:#fff;letter-spacing:-.01em;
+}
+.header-sub{
+  font-size:0.78rem;color:rgba(255,255,255,.65);margin-top:1px;
+}
+.header-badge{
+  margin-left:auto;
+  background:rgba(255,255,255,.15);
+  border:1px solid rgba(255,255,255,.25);
+  color:#fff;
+  font-size:0.72rem;font-weight:500;
+  padding:4px 10px;border-radius:20px;
+}
+
+/* ── MAIN ── */
+.main{
+  max-width:920px;
+  margin:0 auto;
+  padding:32px 20px 60px;
+}
+
+/* ── INPUT CARD ── */
+.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r2);
+  box-shadow:var(--sh);
+  padding:24px;
+  margin-bottom:20px;
+}
+
+.section-label{
+  font-size:0.72rem;font-weight:600;
+  color:var(--text2);
+  text-transform:uppercase;
+  letter-spacing:.07em;
+  margin-bottom:12px;
+}
+
+/* Textarea */
+.rd-textarea{
+  width:100%;
+  height:110px;
+  padding:11px 14px;
+  font-family:'Inter',sans-serif;
+  font-size:0.88rem;
+  color:var(--text);
+  background:var(--bg);
+  border:1.5px solid var(--border);
+  border-radius:var(--r);
+  resize:vertical;
+  outline:none;
+  transition:border-color .15s;
+  line-height:1.6;
+}
+.rd-textarea:focus{border-color:var(--blue);}
+.rd-textarea::placeholder{color:var(--text3);}
+
+.input-hint{
+  font-size:0.75rem;color:var(--text3);
+  margin-top:6px;
+}
+
+/* Actions row */
+.actions{
+  display:flex;gap:10px;flex-wrap:wrap;
+  margin-top:16px;align-items:center;
+}
+
+.btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:9px 18px;
+  border-radius:var(--r);
+  border:none;cursor:pointer;
+  font-family:'Inter',sans-serif;
+  font-size:0.85rem;font-weight:600;
+  transition:all .15s;
+  white-space:nowrap;
+}
+.btn-primary{
+  background:var(--blue);color:#fff;
+}
+.btn-primary:hover{background:var(--blue-dk);}
+.btn-primary:disabled{background:#9BAFD8;cursor:not-allowed;}
+
+.btn-ghost{
+  background:transparent;color:var(--text2);
+  border:1.5px solid var(--border);
+}
+.btn-ghost:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-lt);}
+
+.btn-outline-green{
+  background:transparent;color:var(--green);
+  border:1.5px solid var(--green);
+}
+.btn-outline-green:hover{background:var(--green-lt);}
+.btn-outline-green:disabled{opacity:.45;cursor:not-allowed;}
+
+/* File input */
+.file-btn{
+  position:relative;overflow:hidden;
+}
+.file-btn input[type=file]{
+  position:absolute;inset:0;opacity:0;cursor:pointer;
+}
+
+/* Progress */
+.progress-bar{
+  height:3px;background:var(--border);
+  border-radius:2px;margin-top:14px;
+  display:none;overflow:hidden;
+}
+.progress-fill{
+  height:100%;background:var(--blue);
+  width:0%;transition:width .2s;
+  border-radius:2px;
+}
+
+/* Status */
+.status-msg{
+  font-size:0.82rem;margin-top:8px;
+  display:none;
+  padding:9px 13px;border-radius:var(--r);
+}
+.status-msg.info{background:var(--blue-lt);color:var(--blue);}
+.status-msg.err{background:var(--red-lt);color:var(--red);}
+.status-msg.ok{background:var(--green-lt);color:var(--green);}
+
+/* ── RESULTS ── */
+.results-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:12px;flex-wrap:wrap;gap:8px;
+}
+.results-title{
+  font-size:0.9rem;font-weight:600;color:var(--text);
+  display:flex;align-items:center;gap:8px;
+}
+.count-badge{
+  background:var(--blue-lt);color:var(--blue);
+  font-size:0.72rem;font-weight:700;
+  padding:3px 9px;border-radius:20px;
+}
+
+/* Table */
+.tbl-wrap{overflow-x:auto;}
+table{
+  width:100%;border-collapse:collapse;
+  font-size:0.84rem;
+}
+thead tr{
+  background:var(--bg);
+}
+th{
+  padding:10px 14px;
+  text-align:left;
+  font-weight:600;font-size:0.76rem;
+  color:var(--text2);
+  border-bottom:1.5px solid var(--border);
+  white-space:nowrap;
+}
+td{
+  padding:11px 14px;
+  border-bottom:1px solid var(--border);
+  vertical-align:middle;
+}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#F9FAFD;}
+
+.td-rd{font-weight:600;color:var(--text);font-size:0.86rem;}
+.td-name{color:var(--text);}
+.td-tin{
+  font-weight:700;letter-spacing:.02em;
+  color:var(--blue);font-size:0.9rem;
+}
+.td-tin.empty{color:var(--text3);font-weight:400;font-style:italic;font-size:0.8rem;}
+
+.status-pill{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 10px;border-radius:20px;
+  font-size:0.72rem;font-weight:600;
+  white-space:nowrap;
+}
+.pill-ok{background:var(--green-lt);color:var(--green);}
+.pill-err{background:var(--red-lt);color:var(--red);}
+.pill-wait{background:var(--orange-lt);color:var(--orange);}
+.pill-pending{background:var(--bg);color:var(--text3);border:1px solid var(--border);}
+
+/* Spinner */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{
+  width:13px;height:13px;
+  border:2px solid currentColor;
+  border-top-color:transparent;
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+  display:inline-block;
+}
+
+/* Empty state */
+.empty-state{
+  text-align:center;padding:48px 20px;
+  color:var(--text3);
+}
+.empty-state svg{margin-bottom:12px;opacity:.35;}
+.empty-state p{font-size:0.85rem;}
+
+/* Proxy warning */
+.proxy-note{
+  background:#FFFBEA;border:1px solid #F0D060;
+  border-radius:var(--r);padding:10px 14px;
+  font-size:0.78rem;color:#7A6010;
+  margin-bottom:16px;
+  display:flex;gap:8px;align-items:flex-start;
+  line-height:1.5;
+}
+
+/* Responsive */
+@media(max-width:600px){
+  .header{padding:14px 16px;}
+  .main{padding:20px 12px 40px;}
+  .card{padding:16px;}
+  .actions{flex-direction:column;align-items:stretch;}
+  .btn{justify-content:center;}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.8"/>
+      <path d="M7 8h10M7 12h6M7 16h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div>
+    <div class="header-title">ТИН Дугаар Лавлагаа</div>
+    <div class="header-sub">ebarimt.mn · Регистрийн дугаараар хайх</div>
+  </div>
+  <div class="header-badge">ebarimt.mn API</div>
+</div>
+
+<div class="main">
+
+  <!-- Input card -->
+  <div class="card">
+    <div class="section-label">Регистрийн дугаар оруулах</div>
+    <textarea class="rd-textarea" id="rdInput"
+      placeholder="ИЦ92012511&#10;УБ88113344&#10;..."></textarea>
+    <div class="input-hint">Мөр бүрт нэг РД оруулна. Хоосон мөр, давхардал автоматаар шүүгдэнэ.</div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="searchBtn" onclick="startSearch()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
+          <path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        Хайх
+      </button>
+
+      <button class="btn btn-ghost file-btn" title="Excel файлаас РД уншина">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Excel оруулах
+        <input type="file" accept=".xlsx,.xls" onchange="importExcel(this)"/>
+      </button>
+
+      <button class="btn btn-ghost" onclick="clearAll()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Цэвэрлэх
+      </button>
+
+      <button class="btn btn-outline-green" id="exportBtn" onclick="exportExcel()" disabled style="margin-left:auto;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          <polyline points="7 10 12 15 17 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        </svg>
+        Excel татах
+      </button>
+    </div>
+
+    <div class="progress-bar" id="progressBar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="status-msg" id="statusMsg"></div>
+  </div>
+
+  <!-- Results card -->
+  <div class="card" id="resultsCard" style="display:none;">
+    <div class="results-header">
+      <div class="results-title">
+        Үр дүн
+        <span class="count-badge" id="countBadge">0</span>
+      </div>
+      <div style="font-size:0.75rem;color:var(--text3);" id="summaryText"></div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table id="resultsTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Регистр</th>
+            <th>Нэр</th>
+            <th>ТИН дугаар</th>
+            <th>Төлөв</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody">
+          <tr>
+            <td colspan="5">
+              <div class="empty-state">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                  <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <p>Хайлтын үр дүн энд харагдана</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── STATE ──
+let results = [];
+let isRunning = false;
+
+// ── API FETCH ──
+const API_BASE = 'https://api.ebarimt.mn/api/info/check/getTinInfo?regNo=';
+let workingVariant = null;
+
+// РД encode хийхгүй болон encode хийсэн хоёр variant, proxy-тэй хамт туршина
+function getVariants(rd) {
+  const u1 = API_BASE + rd;
+  const u2 = API_BASE + encodeURIComponent(rd);
+  return [
+    u1,
+    u2,
+    'https://corsproxy.io/?' + encodeURIComponent(u1),
+    'https://corsproxy.io/?' + encodeURIComponent(u2),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(u1),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(u2),
+  ];
+}
+
+async function fetchTin(rd) {
+  if (workingVariant !== null) {
+    // Ажилласан variant-ын загвараар URL үүсгэнэ
+    const sample = getVariants('SAMPLE_RD')[workingVariant];
+    const url = sample.includes(encodeURIComponent('SAMPLE_RD'))
+      ? sample.replace(encodeURIComponent('SAMPLE_RD'), encodeURIComponent(rd))
+      : sample.replace('SAMPLE_RD', rd);
+    return doFetch(url);
+  }
+  const variants = getVariants(rd);
+  for (let i = 0; i < variants.length; i++) {
+    try {
+      const data = await doFetch(variants[i]);
+      workingVariant = i;
+      console.log('✓ Variant', i, 'ажиллав:', variants[i].slice(0,70));
+      return data;
+    } catch(e) {
+      console.warn('✗ Variant', i, ':', e.message);
+    }
+  }
+  throw new Error('API-д холбогдохгүй байна. F12 Console-ээс дэлгэрэнгүй үзнэ үү.');
+}
+
+async function doFetch(url) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal, headers: { 'Accept': 'application/json' } });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    let json;
+    try { json = JSON.parse(text); } catch { throw new Error('JSON биш: ' + text.slice(0,60)); }
+    if (json && typeof json.contents === 'string') {
+      try { json = JSON.parse(json.contents); } catch { throw new Error('contents JSON биш'); }
+    }
+    return json;
+  } catch(e) {
+    clearTimeout(timer);
+    if (e.name === 'AbortError') throw new Error('Timeout (12с)');
+    throw e;
+  }
+}
+
+// ── PARSE INPUT ──
+function parseRDs() {
+  const raw = document.getElementById('rdInput').value;
+  const lines = raw.split(/[\n,;]+/)
+    .map(l => l.trim().toUpperCase())
+    .filter(l => l.length > 0);
+  // Давхардлыг арилгах
+  return [...new Set(lines)];
+}
+
+// ── MAIN SEARCH ──
+async function startSearch() {
+  if (isRunning) return;
+  const rds = parseRDs();
+  if (!rds.length) {
+    showStatus('Регистрийн дугаар оруулна уу', 'err');
+    return;
+  }
+
+  isRunning = true;
+  workingMode = null; // горимыг дахин шалгана
+  results = rds.map(rd => ({ rd, name: '', tin: '', status: 'pending' }));
+
+  const searchBtn = document.getElementById('searchBtn');
+  searchBtn.disabled = true;
+  searchBtn.innerHTML = '<span class="spinner"></span> Хайж байна...';
+
+  document.getElementById('exportBtn').disabled = true;
+  document.getElementById('resultsCard').style.display = 'block';
+  document.getElementById('progressBar').style.display = 'block';
+
+  renderTable();
+  showStatus(rds.length + ' РД хайж байна...', 'info');
+
+  let done = 0;
+  // Concurrency: 3 зэрэг хайна
+  const CONCURRENCY = 3;
+  const queue = [...results];
+  let idx = 0;
+
+  async function worker() {
+    while (idx < queue.length) {
+      const item = queue[idx++];
+      item.status = 'loading';
+      renderRow(item, results.indexOf(item));
+      try {
+        const data = await fetchTin(item.rd);
+        // Response: { name, tin } or array/record
+        let name = '', tin = '';
+        if (Array.isArray(data)) {
+          // Record.ToTable format: [{Name:'name',Value:...},{Name:'tin',Value:...}]
+          data.forEach(r => {
+            if (r.Name === 'name' || r.name === 'name') name = r.Value || r.value || '';
+            if (r.Name === 'tin'  || r.name === 'tin')  tin  = r.Value || r.value || '';
+          });
+        } else if (typeof data === 'object') {
+          name = data.name || data.NAME || '';
+          tin  = data.tin  || data.TIN  || data.tinNumber || '';
+        }
+        item.name   = name || '—';
+        item.tin    = tin  || '';
+        item.status = tin ? 'ok' : 'notfound';
+      } catch(e) {
+        item.status = 'err';
+        item.err = e.message;
+      }
+      done++;
+      updateProgress(done, results.length);
+      renderRow(item, results.indexOf(item));
+      updateSummary();
+    }
+  }
+
+  await Promise.all(Array.from({length: CONCURRENCY}, worker));
+
+  isRunning = false;
+  searchBtn.disabled = false;
+  searchBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+    <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
+    <path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </svg> Хайх`;
+
+  const okCount = results.filter(r => r.status === 'ok').length;
+  const errCount = results.filter(r => r.status === 'err' || r.status === 'notfound').length;
+  showStatus(`✓ ${okCount} ТИН олдлоо${errCount ? ' · ' + errCount + ' олдсонгүй' : ''}`, okCount ? 'ok' : 'err');
+  document.getElementById('exportBtn').disabled = false;
+
+  setTimeout(() => {
+    document.getElementById('progressBar').style.display = 'none';
+  }, 600);
+}
+
+function updateProgress(done, total) {
+  const pct = Math.round(done / total * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('countBadge').textContent = total;
+}
+
+function updateSummary() {
+  const ok  = results.filter(r => r.status === 'ok').length;
+  const err = results.filter(r => r.status === 'err' || r.status === 'notfound').length;
+  const ld  = results.filter(r => r.status === 'loading' || r.status === 'pending').length;
+  let parts = [];
+  if (ok)  parts.push(`<span style="color:var(--green)">${ok} олдлоо</span>`);
+  if (err) parts.push(`<span style="color:var(--red)">${err} олдсонгүй</span>`);
+  if (ld)  parts.push(`<span style="color:var(--text3)">${ld} хүлээгдэж байна</span>`);
+  document.getElementById('summaryText').innerHTML = parts.join(' · ');
+}
+
+// ── RENDER ──
+function renderTable() {
+  const tbody = document.getElementById('resultsBody');
+  tbody.innerHTML = '';
+  results.forEach((item, i) => {
+    tbody.insertAdjacentHTML('beforeend', rowHTML(item, i));
+  });
+  document.getElementById('countBadge').textContent = results.length;
+}
+
+function renderRow(item, i) {
+  const existing = document.getElementById('row-' + i);
+  const html = rowHTML(item, i);
+  if (existing) {
+    existing.outerHTML = html;
+  } else {
+    document.getElementById('resultsBody').insertAdjacentHTML('beforeend', html);
+  }
+}
+
+function rowHTML(item, i) {
+  let pill = '';
+  if (item.status === 'pending') {
+    pill = '<span class="status-pill pill-pending">Хүлээгдэж байна</span>';
+  } else if (item.status === 'loading') {
+    pill = '<span class="status-pill pill-wait"><span class="spinner"></span> Хайж байна</span>';
+  } else if (item.status === 'ok') {
+    pill = '<span class="status-pill pill-ok">✓ Олдлоо</span>';
+  } else if (item.status === 'notfound') {
+    pill = '<span class="status-pill pill-err">Олдсонгүй</span>';
+  } else if (item.status === 'err') {
+    pill = '<span class="status-pill pill-err" title="' + (item.err||'').replace(/"/g,"'") + '">Алдаа ⓘ</span>';
+  }
+
+  const tinCell = item.tin
+    ? `<span class="td-tin">${item.tin}</span>`
+    : `<span class="td-tin empty">${item.status === 'ok' ? '—' : ''}</span>`;
+
+  return `<tr id="row-${i}">
+    <td style="color:var(--text3);font-size:0.78rem;">${i+1}</td>
+    <td class="td-rd">${item.rd}</td>
+    <td class="td-name">${item.name || ''}</td>
+    <td>${tinCell}</td>
+    <td>${pill}</td>
+  </tr>`;
+}
+
+// ── STATUS ──
+function showStatus(msg, type) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.className = 'status-msg ' + type;
+  el.style.display = 'block';
+}
+
+// ── CLEAR ──
+function clearAll() {
+  if (isRunning) return;
+  document.getElementById('rdInput').value = '';
+  results = [];
+  document.getElementById('resultsCard').style.display = 'none';
+  document.getElementById('statusMsg').style.display = 'none';
+  document.getElementById('progressBar').style.display = 'none';
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('exportBtn').disabled = true;
+  workingMode = null;
+}
+
+// ── EXCEL IMPORT ──
+function importExcel(input) {
+  const f = input.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      const rds = [];
+      data.forEach(row => {
+        row.forEach(cell => {
+          const v = String(cell).trim().toUpperCase();
+          // РД format: 2 үсэг + тоо эсвэл бүгд тоо
+          if (v && ((/^[А-ЯӨҮA-Z]{2}\d+$/.test(v)) || /^\d{8,10}$/.test(v))) {
+            rds.push(v);
+          }
+        });
+      });
+      if (!rds.length) {
+        showStatus('Excel-ээс РД олдсонгүй', 'err');
+        return;
+      }
+      const unique = [...new Set(rds)];
+      // Одоо байгаа текстэд нэмэх
+      const cur = document.getElementById('rdInput').value.trim();
+      const existing = cur ? cur.split('\n').map(s=>s.trim().toUpperCase()).filter(Boolean) : [];
+      const merged = [...new Set([...existing, ...unique])];
+      document.getElementById('rdInput').value = merged.join('\n');
+      showStatus(`✓ ${unique.length} РД Excel-ээс уншигдлаа`, 'ok');
+    } catch(err) {
+      showStatus('Excel уншихад алдаа: ' + err.message, 'err');
+    }
+    input.value = '';
+  };
+  reader.readAsArrayBuffer(f);
+}
+
+// ── EXCEL EXPORT ──
+function exportExcel() {
+  if (!results.length) return;
+  const rows = results.map(r => ({
+    'РД':         r.rd,
+    'НЭР':        r.name || '',
+    'ТИН ДУГААР': r.tin  || '',
+    'ТӨЛӨВ':      r.status === 'ok' ? 'Олдлоо' : r.status === 'notfound' ? 'Олдсонгүй' : 'Алдаа',
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:14},{wch:36},{wch:18},{wch:12}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'ТИН Лавлагаа');
+  const date = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `TIN_Lavlagaa_${date}.xlsx`);
+}
+
+// ── ENTER shortcut ──
+document.getElementById('rdInput').addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'Enter') startSearch();
+});
+</script>
+</body>
+</html>
